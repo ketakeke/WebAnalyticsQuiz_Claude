@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四択クイズゲーム</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-width: 700px;
+      width: 100%;
+      padding: 40px;
+    }
+    .screen { display: none; }
+    .screen.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    h1 { color: #333; margin-bottom: 30px; text-align: center; font-size: 2em; }
+    h2 { color: #555; margin-bottom: 20px; font-size: 1.3em; }
+    
+    .title-buttons { display: flex; gap: 12px; margin-bottom: 20px; }
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      font-size: 1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #5568d3; transform: translateY(-2px); }
+    .btn-secondary { background: #2196F3; color: white; }
+    .btn-secondary:hover { background: #0b7dda; }
+    .btn-danger { background: #f44336; color: white; }
+    .btn-danger:hover { background: #da190b; }
+    
+    .data-status {
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 0.95em;
+    }
+    .data-status.ok { background: #e8f5e9; color: #2e7d32; }
+    .data-status.error { background: #ffebee; color: #c62828; }
+    
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-weight: bold;
+      color: #555;
+    }
+    .timer-container { margin-bottom: 20px; }
+    .timer-bar {
+      width: 100%;
+      height: 10px;
+      background: #e0e0e0;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .timer-fill {
+      height: 100%;
+      background: #4CAF50;
+      transition: width 0.1s linear;
+    }
+    .timer-fill.warning { background: #ff9800; }
+    .timer-fill.critical { background: #f44336; animation: pulse 0.4s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .timer-text { text-align: center; font-size: 0.9em; color: #667eea; font-weight: bold; }
+    
+    .question {
+      padding: 24px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 1.15em;
+      line-height: 1.7;
+      color: #333;
+    }
+    .choices { display: grid; gap: 12px; margin-bottom: 20px; }
+    .choice {
+      padding: 14px 18px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.2s;
+      background: white;
+      text-align: left;
+    }
+    .choice:hover:not(:disabled) { background: #f0f0f0; border-color: #667eea; transform: translateX(4px); }
+    .choice.correct { background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; font-weight: bold; }
+    .choice.incorrect { background: #ffebee; border-color: #f44336; color: #c62828; font-weight: bold; }
+    .choice:disabled { opacity: 0.7; cursor: not-allowed; }
+    
+    .judge-panel {
+      text-align: center;
+      padding: 24px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .judge-result { font-size: 4em; margin-bottom: 16px; }
+    .judge-result.correct { color: #4CAF50; }
+    .judge-result.incorrect { color: #f44336; }
+    .explanation {
+      padding: 16px;
+      background: white;
+      border-left: 4px solid #667eea;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      text-align: left;
+      font-size: 0.95em;
+      line-height: 1.6;
+      color: #555;
+    }
+    
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 500px;
+      width: 95%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .settings-group { margin-bottom: 18px; }
+    .settings-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+      color: #333;
+      font-size: 0.95em;
+    }
+    .settings-group input,
+    .settings-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+    .settings-group input[type="checkbox"] { width: auto; margin-right: 8px; }
+    .checkbox-label { display: flex; align-items: center; font-weight: normal; }
+    
+    .result-panel {
+      text-align: center;
+      padding: 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      margin-bottom: 24px;
+      color: white;
+    }
+    .result-score { font-size: 3em; font-weight: bold; margin-bottom: 12px; }
+    .result-message { font-size: 1.3em; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Title Screen -->
+  <div id="titleScreen" class="screen active">
+    <h1>📚 四択クイズゲーム</h1>
+    <div id="dataStatus" class="data-status" style="display: none;"></div>
+    <div class="title-buttons">
+      <button class="btn btn-primary" onclick="startGame()">スタート</button>
+      <button class="btn btn-secondary" onclick="openSettings()">設定</button>
+    </div>
+    <p style="text-align: center; color: #999; font-size: 0.9em; margin-top: 20px;">
+      GitHub RawのJSONデータでクイズを実行<br>
+      制限時間・合格ラインを自由に設定できます
+    </p>
+  </div>
+
+  <!-- Play Screen -->
+  <div id="playScreen" class="screen">
+    <div class="hud">
+      <div>Q <span id="qNumber">1</span>/<span id="qTotal">20</span></div>
+      <div>スコア: <span id="score">0</span></div>
+      <div id="missLeft" style="display: none;">ミス: <span id="missLeftNum">5</span></div>
+    </div>
+
+    <div class="timer-container">
+      <div class="timer-bar"><div id="timerFill" class="timer-fill"></div></div>
+      <div class="timer-text"><span id="timerText">120</span></div>
+    </div>
+
+    <div id="questionPanel" style="display: none;">
+      <div class="question" id="questionText"></div>
+      <div class="choices" id="choicesContainer"></div>
+    </div>
+
+    <div id="judgePanel" class="judge-panel" style="display: none;">
+      <div id="judgeResult" class="judge-result"></div>
+      <div id="explanationText" class="explanation"></div>
+      <button class="btn btn-primary" onclick="nextQuestion()">次へ</button>
+    </div>
+  </div>
+
+  <!-- End Screen -->
+  <div id="endScreen" class="screen">
+    <h1>ゲーム終了</h1>
+    <div class="result-panel">
+      <div class="result-score" id="finalScore">0/20</div>
+      <div id="resultMessage" class="result-message"></div>
+    </div>
+    <div style="display: flex; gap: 12px;">
+      <button class="btn btn-primary" onclick="resetGame()">再挑戦</button>
+      <button class="btn btn-secondary" onclick="goToTitle()">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+  <div class="modal-content">
+    <h2>⚙️ ゲーム設定</h2>
+    
+    <div class="settings-group">
+      <label for="dataUrl">データURL (GitHub Raw)</label>
+      <input type="text" id="dataUrl" placeholder="https://raw.githubusercontent.com/...">
+      <small style="color: #999;">JSON形式のデータファイルへの直リンク</small>
+    </div>
+
+    <div class="settings-group">
+      <label for="totalQuestions">出題数</label>
+      <input type="number" id="totalQuestions" min="5" max="500" value="20">
+    </div>
+
+    <div class="settings-group">
+      <label for="timePerQuestion">1問の制限秒数</label>
+      <input type="number" id="timePerQuestion" min="10" max="600" value="120">
+    </div>
+
+    <div class="settings-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="unlimitedTime">
+        <span>制限時間無制限</span>
+      </label>
+    </div>
+
+    <div class="settings-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="usePass" checked>
+        <span>合格ラインを使用</span>
+      </label>
+    </div>
+
+    <div class="settings-group">
+      <label for="passingScore">合格必要点</label>
+      <input type="number" id="passingScore" min="0" max="500" value="15">
+    </div>
+
+    <div class="settings-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="shuffleQ" checked>
+        <span>問題をランダム抽選</span>
+      </label>
+    </div>
+
+    <div class="settings-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="shuffleC" checked>
+        <span>選択肢をランダム並び</span>
+      </label>
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-top: 24px;">
+      <button class="btn btn-primary" style="flex: 2;" onclick="saveSettings()">保存</button>
+      <button class="btn btn-secondary" onclick="resetSettings()">デフォルト</button>
+      <button class="btn btn-danger" onclick="closeSettings()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_SETTINGS = {
+  dataUrl: './quiz_list.json',
+  totalQuestions: 5,
+  timePerQuestionSec: 120,
+  unlimited: false,
+  usePass: true,
+  passingScore: 3,
+  shuffleQ: true,
+  shuffleC: true
+};
+
+let settings = {...DEFAULT_SETTINGS};
+let selectedQuestions = [];
+let currentIndex = 0;
+let score = 0;
+let missesLeft = 0;
+let timerInterval = null;
+let timerStart = 0;
+let isAnswered = false;
+let gameOver = false;
+
+window.addEventListener('load', () => {
+  loadSettings();
+  updateDataStatus();
+});
+
+function loadSettings() {
+  const saved = localStorage.getItem('quizSettings');
+  if (saved) try { settings = {...DEFAULT_SETTINGS, ...JSON.parse(saved)}; } catch(e) {}
+  applySettingsToUI();
+}
+
+function applySettingsToUI() {
+  document.getElementById('dataUrl').value = settings.dataUrl;
+  document.getElementById('totalQuestions').value = settings.totalQuestions;
+  document.getElementById('timePerQuestion').value = settings.timePerQuestionSec;
+  document.getElementById('unlimitedTime').checked = settings.unlimited;
+  document.getElementById('usePass').checked = settings.usePass;
+  document.getElementById('passingScore').value = settings.passingScore;
+  document.getElementById('shuffleQ').checked = settings.shuffleQ;
+  document.getElementById('shuffleC').checked = settings.shuffleC;
+}
+
+function saveSettings() {
+  settings = {
+    dataUrl: document.getElementById('dataUrl').value,
+    totalQuestions: Math.max(5, parseInt(document.getElementById('totalQuestions').value) || 20),
+    timePerQuestionSec: Math.max(10, parseInt(document.getElementById('timePerQuestion').value) || 120),
+    unlimited: document.getElementById('unlimitedTime').checked,
+    usePass: document.getElementById('usePass').checked,
+    passingScore: Math.max(0, parseInt(document.getElementById('passingScore').value) || 15),
+    shuffleQ: document.getElementById('shuffleQ').checked,
+    shuffleC: document.getElementById('shuffleC').checked
+  };
+  
+  if (settings.passingScore > settings.totalQuestions) {
+    alert('合格必要点は出題数以下にしてください');
+    return;
+  }
+  
+  localStorage.setItem('quizSettings', JSON.stringify(settings));
+  closeSettings();
+  updateDataStatus();
+}
+
+function resetSettings() {
+  const currentDataUrl = settings.dataUrl;
+  settings = {...DEFAULT_SETTINGS};
+  settings.dataUrl = currentDataUrl;
+  localStorage.setItem('quizSettings', JSON.stringify(settings));
+  applySettingsToUI();
+}
+
+function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
+function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
+
+function updateDataStatus() {
+  const status = document.getElementById('dataStatus');
+  if (!settings.dataUrl) {
+    status.textContent = '⚠️ データURLが設定されていません';
+    status.className = 'data-status error';
+  } else {
+    status.textContent = '✔ データは読み込み可能です';
+    status.className = 'data-status ok';
+  }
+  status.style.display = 'block';
+}
+
+async function loadQuestions(url) {
+  try {
+    const res = await fetch(url, {cache: 'no-cache'});
+    if (!res.ok) throw new Error('ネットワークエラー');
+    const data = await res.json();
+    
+    if (!Array.isArray(data) || data.length === 0) throw new Error('データが空です');
+    
+    for (let q of data) {
+      if (!q.id || !q.question || !Array.isArray(q.choices) || !q.correct)
+        throw new Error('データ形式が不正です');
+    }
+    return data;
+  } catch(e) {
+    alert('データ読み込みエラー: ' + e.message);
+    return null;
+  }
+}
+
+function shuffle(arr) {
+  let res = [...arr];
+  for (let i = res.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [res[i], res[j]] = [res[j], res[i]];
+  }
+  return res;
+}
+
+async function startGame() {
+  if (!settings.dataUrl) { alert('データURLを設定してください'); openSettings(); return; }
+  
+  const allQ = await loadQuestions(settings.dataUrl);
+  if (!allQ) return;
+  
+  if (settings.totalQuestions > allQ.length) {
+    alert(`出題数をデータ件数(${allQ.length})以下にしてください`);
+    return;
+  }
+  
+  let indices = Array.from({length: allQ.length}, (_, i) => i);
+  if (settings.shuffleQ) indices = shuffle(indices);
+  
+  selectedQuestions = [];
+  for (let i = 0; i < settings.totalQuestions; i++) {
+    let q = {...allQ[indices[i]]};
+    if (settings.shuffleC) q.choices = shuffle(q.choices);
+    selectedQuestions.push(q);
+  }
+  
+  currentIndex = 0;
+  score = 0;
+  missesLeft = settings.totalQuestions - settings.passingScore;
+  isAnswered = false;
+  gameOver = false;
+  
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('playScreen').classList.add('active');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (currentIndex >= selectedQuestions.length) { finishGame(); return; }
+  
+  const q = selectedQuestions[currentIndex];
+  document.getElementById('qNumber').textContent = currentIndex + 1;
+  document.getElementById('qTotal').textContent = selectedQuestions.length;
+  document.getElementById('score').textContent = score;
+  
+  if (settings.usePass) {
+    document.getElementById('missLeft').style.display = 'block';
+    document.getElementById('missLeftNum').textContent = Math.max(0, missesLeft);
+  } else {
+    document.getElementById('missLeft').style.display = 'none';
+  }
+  
+  document.getElementById('questionText').textContent = q.question;
+  
+  const cont = document.getElementById('choicesContainer');
+  cont.innerHTML = '';
+  q.choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.textContent = c.k + ': ' + c.t;
+    btn.onclick = () => handleAnswer(c.k);
+    btn.id = 'choice_' + c.k;
+    cont.appendChild(btn);
+  });
+  
+  document.getElementById('questionPanel').style.display = 'block';
+  document.getElementById('judgePanel').style.display = 'none';
+  
+  isAnswered = false;
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerStart = Date.now();
+  const duration = settings.unlimited ? Infinity : settings.timePerQuestionSec * 1000;
+  
+  const update = () => {
+    const elapsed = Date.now() - timerStart;
+    const remain = Math.max(0, duration - elapsed);
+    const pct = (remain / duration) * 100;
+    
+    const fill = document.getElementById('timerFill');
+    const text = document.getElementById('timerText');
+    
+    if (settings.unlimited) {
+      text.textContent = '∞';
+      fill.style.width = '100%';
+      fill.className = 'timer-fill';
+    } else {
+      text.textContent = Math.ceil(remain / 1000);
+      fill.style.width = pct + '%';
+      fill.className = pct < 10 ? 'timer-fill critical' : pct < 25 ? 'timer-fill warning' : 'timer-fill';
+      
+      if (remain <= 0) {
+        clearInterval(timerInterval);
+        if (!isAnswered) handleAnswer(null);
+      }
+    }
+  };
+  
+  update();
+  timerInterval = setInterval(update, 100);
+}
+
+function handleAnswer(picked) {
+  if (isAnswered || gameOver) return;
+  isAnswered = true;
+  clearInterval(timerInterval);
+  
+  const q = selectedQuestions[currentIndex];
+  const correct = picked === q.correct;
+  
+  if (correct) score++;
+  else missesLeft--;
+  
+  document.querySelectorAll('.choice').forEach(b => b.disabled = true);
+  if (picked) document.getElementById('choice_' + picked).classList.add(correct ? 'correct' : 'incorrect');
+  document.getElementById('choice_' + q.correct).classList.add('correct');
+  
+  const exp = q.explanation || '解説なし';
+  const result = document.getElementById('judgeResult');
+  result.textContent = correct ? '✔️' : '❌';
+  result.className = 'judge-result ' + (correct ? 'correct' : 'incorrect');
+  
+  document.getElementById('explanationText').textContent = exp;
+  document.getElementById('questionPanel').style.display = 'none';
+  document.getElementById('judgePanel').style.display = 'block';
+  
+  if (settings.usePass && missesLeft < 0) gameOver = true;
+}
+
+function nextQuestion() {
+  if (gameOver) { finishGame(); return; }
+  currentIndex++;
+  if (currentIndex >= selectedQuestions.length) finishGame();
+  else renderQuestion();
+}
+
+function finishGame() {
+  clearInterval(timerInterval);
+  const total = selectedQuestions.length;
+  const passed = score >= settings.passingScore;
+  
+  document.getElementById('finalScore').textContent = `${score}/${total}`;
+  
+  let msg = '';
+  if (gameOver) msg = '❌ ゲームオーバー（許容ミス超過）';
+  else if (settings.usePass) msg = passed ? '✔️ 合格！' : '❌ 不合格';
+  else msg = '✔️ クイズ完了';
+  
+  document.getElementById('resultMessage').textContent = msg;
+  
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('endScreen').classList.add('active');
+}
+
+function resetGame() { startGame(); }
+function goToTitle() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('titleScreen').classList.add('active');
+}
+</script>
+
+</body>
+</html>
