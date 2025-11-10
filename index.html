@@ -953,8 +953,8 @@ function finishGame() {
 
   document.getElementById('resultMessage').textContent = msg;
 
-  const comment = getResultMessage(score, total, gameOver);
   if (!gameOver) {
+    const comment = getResultMessage(score, total, gameOver);
     document.getElementById('resultComment').textContent = comment;
   }
 
