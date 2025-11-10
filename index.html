@@ -265,6 +265,58 @@
       background: linear-gradient(90deg, #667eea, #764ba2);
       transition: width 0.3s;
     }
+
+    .bookmark-badge {
+      display: inline-block;
+      background: #ff6f00;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+
+    .bookmark-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .bookmark-item {
+      background: #f5f5f5;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #ff6f00;
+    }
+    .bookmark-item-q {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 6px;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+    .bookmark-item-btn {
+      display: inline-block;
+      background: #f44336;
+      color: white;
+      padding: 4px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.8em;
+      cursor: pointer;
+    }
+    .bookmark-item-btn:hover { background: #da190b; }
+
+    .mode-indicator {
+      display: inline-block;
+      background: #ff9800;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
@@ -283,6 +335,10 @@
       <button class="btn btn-primary" onclick="startGame()">スタート</button>
       <button class="btn btn-secondary" onclick="openSettings()">設定</button>
     </div>
+    <div id="bookmarkSection" style="text-align: center; margin-top: 20px; padding: 14px; background: #fff8e1; border-radius: 8px; display: none;">
+      <button class="btn btn-secondary" style="width: 100%;" onclick="openBookmarks()">🔖 ブックマーク一覧 <span id="bookmarkCount" class="bookmark-badge">0</span></button>
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="startReviewMode()">📚 振り返りモードで復習</button>
+    </div>
     <p style="text-align: center; color: #999; font-size: 0.9em; margin-top: 20px;">
       ワクワクのクイズゲーム 🎮✨
     </p>
@@ -292,6 +348,10 @@
   <div id="playScreen" class="screen">
     <div class="progress-bar">
       <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <span id="modeIndicator" style="display: none;" class="mode-indicator">📚 振り返りモード</span>
     </div>
 
     <div class="hud">
@@ -405,6 +465,20 @@
   </div>
 </div>
 
+<!-- Bookmarks Modal -->
+<div id="bookmarksModal" class="modal">
+  <div class="modal-content">
+    <h2>🔖 ブックマーク一覧</h2>
+    <p style="color: #666; font-size: 0.95em; margin-bottom: 16px;">間違えた問題を復習できます。</p>
+    <div id="bookmarkListContainer" class="bookmark-list"></div>
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button class="btn btn-primary" style="flex: 2;" onclick="startReviewMode()">📚 復習を開始</button>
+      <button class="btn btn-danger" onclick="clearAllBookmarks()">すべてクリア</button>
+      <button class="btn btn-secondary" onclick="closeBookmarks()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const DEFAULT_SETTINGS = {
   dataUrl: './quiz_list.json',
@@ -429,6 +503,9 @@ let timerStart = 0;
 let isAnswered = false;
 let gameOver = false;
 let gameHistory = [];
+let bookmarked = [];
+let isReviewMode = false;
+let allQuestionsData = [];
 
 // Sound helper
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -486,8 +563,10 @@ function floatingScore(x, y, points, isCorrect) {
 window.addEventListener('load', () => {
   loadSettings();
   loadHistory();
+  loadBookmarks();
   updateDataStatus();
   showPreviousScore();
+  updateBookmarkSection();
 });
 
 function loadSettings() {
@@ -499,6 +578,27 @@ function loadSettings() {
 function loadHistory() {
   const hist = localStorage.getItem('quizHistory');
   if (hist) try { gameHistory = JSON.parse(hist); } catch(e) {}
+}
+
+function loadBookmarks() {
+  const bm = localStorage.getItem('quizBookmarks');
+  if (bm) try { bookmarked = JSON.parse(bm); } catch(e) {}
+}
+
+function saveBookmarks() {
+  localStorage.setItem('quizBookmarks', JSON.stringify(bookmarked));
+  updateBookmarkSection();
+}
+
+function updateBookmarkSection() {
+  const section = document.getElementById('bookmarkSection');
+  const count = document.getElementById('bookmarkCount');
+  if (bookmarked.length > 0) {
+    section.style.display = 'block';
+    count.textContent = bookmarked.length;
+  } else {
+    section.style.display = 'none';
+  }
 }
 
 function saveHistory() {
@@ -605,25 +705,43 @@ function shuffle(arr) {
   return res;
 }
 
-async function startGame() {
+async function startGame(reviewMode = false) {
   if (!settings.dataUrl) { alert('データURLを設定してください'); openSettings(); return; }
 
   const allQ = await loadQuestions(settings.dataUrl);
   if (!allQ) return;
 
-  if (settings.totalQuestions > allQ.length) {
-    alert(`出題数をデータ件数(${allQ.length})以下にしてください`);
-    return;
-  }
+  allQuestionsData = allQ;
+  isReviewMode = reviewMode;
 
-  let indices = Array.from({length: allQ.length}, (_, i) => i);
-  if (settings.shuffleQ) indices = shuffle(indices);
+  if (reviewMode) {
+    // Review mode: use bookmarked questions
+    if (bookmarked.length === 0) { alert('ブックマークされた問題がありません'); return; }
+    selectedQuestions = [];
+    for (let id of bookmarked) {
+      const q = allQ.find(x => x.id === id);
+      if (q) {
+        let qq = {...q};
+        if (settings.shuffleC) qq.choices = shuffle(qq.choices);
+        selectedQuestions.push(qq);
+      }
+    }
+  } else {
+    // Normal mode: use totalQuestions
+    if (settings.totalQuestions > allQ.length) {
+      alert(`出題数をデータ件数(${allQ.length})以下にしてください`);
+      return;
+    }
 
-  selectedQuestions = [];
-  for (let i = 0; i < settings.totalQuestions; i++) {
-    let q = {...allQ[indices[i]]};
-    if (settings.shuffleC) q.choices = shuffle(q.choices);
-    selectedQuestions.push(q);
+    let indices = Array.from({length: allQ.length}, (_, i) => i);
+    if (settings.shuffleQ) indices = shuffle(indices);
+
+    selectedQuestions = [];
+    for (let i = 0; i < settings.totalQuestions; i++) {
+      let q = {...allQ[indices[i]]};
+      if (settings.shuffleC) q.choices = shuffle(q.choices);
+      selectedQuestions.push(q);
+    }
   }
 
   currentIndex = 0;
@@ -647,6 +765,14 @@ function renderQuestion() {
   document.getElementById('qNumber').textContent = currentIndex + 1;
   document.getElementById('qTotal').textContent = selectedQuestions.length;
   document.getElementById('score').textContent = score;
+
+  // Show review mode indicator
+  const modeInd = document.getElementById('modeIndicator');
+  if (isReviewMode) {
+    modeInd.style.display = 'inline-block';
+  } else {
+    modeInd.style.display = 'none';
+  }
 
   const progress = ((currentIndex) / selectedQuestions.length) * 100;
   document.getElementById('progressFill').style.width = progress + '%';
@@ -737,6 +863,13 @@ function handleAnswer(picked, btn) {
     streak = 0;
     missesLeft--;
     playSoundIncorrect();
+
+    // Auto-bookmark incorrect answer
+    if (!bookmarked.includes(q.id)) {
+      bookmarked.push(q.id);
+      saveBookmarks();
+    }
+
     if (btn) {
       const rect = btn.getBoundingClientRect();
       const div = document.createElement('div');
@@ -846,11 +979,58 @@ function finishGame() {
   document.getElementById('endScreen').classList.add('active');
 }
 
-function resetGame() { startGame(); }
+function resetGame() { startGame(isReviewMode); }
 function goToTitle() {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('titleScreen').classList.add('active');
   showPreviousScore();
+}
+
+function openBookmarks() {
+  const cont = document.getElementById('bookmarkListContainer');
+  if (bookmarked.length === 0) {
+    cont.innerHTML = '<p style="color: #999;">ブックマークされた問題がありません</p>';
+    document.getElementById('bookmarksModal').classList.add('active');
+    return;
+  }
+
+  const bmList = bookmarked.map(id => {
+    const q = allQuestionsData.find(x => x.id === id);
+    if (!q) return '';
+    const idx = bookmarked.indexOf(id);
+    return `
+      <div class="bookmark-item">
+        <div class="bookmark-item-q">問${idx + 1}. ${q.question.substring(0, 80)}...</div>
+        <button class="bookmark-item-btn" onclick="removeBookmark('${id}')">削除</button>
+      </div>
+    `;
+  }).join('');
+
+  cont.innerHTML = bmList;
+  document.getElementById('bookmarksModal').classList.add('active');
+}
+
+function closeBookmarks() {
+  document.getElementById('bookmarksModal').classList.remove('active');
+}
+
+function removeBookmark(id) {
+  bookmarked = bookmarked.filter(x => x !== id);
+  saveBookmarks();
+  openBookmarks(); // Refresh
+}
+
+function clearAllBookmarks() {
+  if (confirm('ブックマークをすべて削除しますか？')) {
+    bookmarked = [];
+    saveBookmarks();
+    closeBookmarks();
+  }
+}
+
+function startReviewMode() {
+  closeBookmarks();
+  startGame(true);
 }
 </script>
 
