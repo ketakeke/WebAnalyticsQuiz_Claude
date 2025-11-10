@@ -22,13 +22,15 @@
       max-width: 700px;
       width: 100%;
       padding: 40px;
+      position: relative;
     }
     .screen { display: none; }
     .screen.active { display: block; animation: fadeIn 0.3s; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
     h1 { color: #333; margin-bottom: 30px; text-align: center; font-size: 2em; }
     h2 { color: #555; margin-bottom: 20px; font-size: 1.3em; }
-    
+
     .title-buttons { display: flex; gap: 12px; margin-bottom: 20px; }
     .btn {
       flex: 1;
@@ -46,7 +48,7 @@
     .btn-secondary:hover { background: #0b7dda; }
     .btn-danger { background: #f44336; color: white; }
     .btn-danger:hover { background: #da190b; }
-    
+
     .data-status {
       padding: 14px;
       border-radius: 8px;
@@ -55,14 +57,18 @@
     }
     .data-status.ok { background: #e8f5e9; color: #2e7d32; }
     .data-status.error { background: #ffebee; color: #c62828; }
-    
+
     .hud {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
       margin-bottom: 20px;
       font-weight: bold;
       color: #555;
+      text-align: center;
     }
+    .hud-item { padding: 10px; background: #f5f5f5; border-radius: 8px; }
+
     .timer-container { margin-bottom: 20px; }
     .timer-bar {
       width: 100%;
@@ -81,7 +87,16 @@
     .timer-fill.critical { background: #f44336; animation: pulse 0.4s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .timer-text { text-align: center; font-size: 0.9em; color: #667eea; font-weight: bold; }
-    
+
+    .streak-display {
+      text-align: center;
+      font-size: 1.8em;
+      margin-bottom: 16px;
+      min-height: 40px;
+    }
+    .streak-correct { color: #4CAF50; }
+    .streak-miss { color: #f44336; }
+
     .question {
       padding: 24px;
       background: #f5f5f5;
@@ -101,12 +116,31 @@
       transition: all 0.2s;
       background: white;
       text-align: left;
+      position: relative;
     }
     .choice:hover:not(:disabled) { background: #f0f0f0; border-color: #667eea; transform: translateX(4px); }
-    .choice.correct { background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; font-weight: bold; }
-    .choice.incorrect { background: #ffebee; border-color: #f44336; color: #c62828; font-weight: bold; }
+    .choice.correct { background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; font-weight: bold; animation: correctFlash 0.6s; }
+    .choice.incorrect { background: #ffebee; border-color: #f44336; color: #c62828; font-weight: bold; animation: incorrectShake 0.6s; }
     .choice:disabled { opacity: 0.7; cursor: not-allowed; }
-    
+
+    @keyframes correctFlash {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+    }
+    @keyframes incorrectShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+    @keyframes fallDown {
+      0% { transform: translateY(-20px); opacity: 1; }
+      100% { transform: translateY(60px); opacity: 0; }
+    }
+    @keyframes floatingScore {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-60px); opacity: 0; }
+    }
+
     .judge-panel {
       text-align: center;
       padding: 24px;
@@ -114,9 +148,11 @@
       border-radius: 8px;
       margin-bottom: 20px;
     }
-    .judge-result { font-size: 4em; margin-bottom: 16px; }
+    .judge-result { font-size: 4em; margin-bottom: 16px; animation: judgeAppear 0.4s; }
     .judge-result.correct { color: #4CAF50; }
     .judge-result.incorrect { color: #f44336; }
+    @keyframes judgeAppear { from { transform: scale(0.5); } to { transform: scale(1); } }
+
     .explanation {
       padding: 16px;
       background: white;
@@ -128,7 +164,7 @@
       line-height: 1.6;
       color: #555;
     }
-    
+
     .modal {
       position: fixed;
       top: 0; left: 0;
@@ -168,7 +204,7 @@
     }
     .settings-group input[type="checkbox"] { width: auto; margin-right: 8px; }
     .checkbox-label { display: flex; align-items: center; font-weight: normal; }
-    
+
     .result-panel {
       text-align: center;
       padding: 24px;
@@ -177,8 +213,110 @@
       margin-bottom: 24px;
       color: white;
     }
-    .result-score { font-size: 3em; font-weight: bold; margin-bottom: 12px; }
+    .result-score { font-size: 3.5em; font-weight: bold; margin-bottom: 12px; }
+    .result-stars {
+      font-size: 3em;
+      margin-bottom: 16px;
+      letter-spacing: 8px;
+      animation: starsAppear 0.6s;
+    }
+    @keyframes starsAppear {
+      from { transform: scale(0); }
+      to { transform: scale(1); }
+    }
     .result-message { font-size: 1.3em; margin-bottom: 12px; }
+    .result-comment { font-size: 1em; margin-bottom: 16px; opacity: 0.9; }
+    .result-comparison {
+      background: rgba(255,255,255,0.15);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 0.95em;
+    }
+
+    /* Particle effect */
+    .particle {
+      position: fixed;
+      pointer-events: none;
+      font-size: 2em;
+    }
+    .particle-emoji { animation: particleFloat 1.5s ease-out forwards; }
+    @keyframes particleFloat {
+      0% {
+        transform: translateY(0) translateX(0) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100px) translateX(50px) scale(0.2);
+        opacity: 0;
+      }
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 0.3s;
+    }
+
+    .bookmark-badge {
+      display: inline-block;
+      background: #ff6f00;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+
+    .bookmark-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .bookmark-item {
+      background: #f5f5f5;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #ff6f00;
+    }
+    .bookmark-item-q {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 6px;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+    .bookmark-item-btn {
+      display: inline-block;
+      background: #f44336;
+      color: white;
+      padding: 4px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.8em;
+      cursor: pointer;
+    }
+    .bookmark-item-btn:hover { background: #da190b; }
+
+    .mode-indicator {
+      display: inline-block;
+      background: #ff9800;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
@@ -188,23 +326,41 @@
   <div id="titleScreen" class="screen active">
     <h1>📚 四択クイズゲーム</h1>
     <div id="dataStatus" class="data-status" style="display: none;"></div>
+    <div id="previousScore" style="text-align: center; margin-bottom: 20px; padding: 14px; background: #fff3e0; border-radius: 8px; display: none;">
+      <div style="font-size: 0.9em; color: #e65100;">前回のスコア</div>
+      <div style="font-size: 2em; font-weight: bold; color: #ff6f00;" id="prevScoreText"></div>
+      <div id="prevComparison" style="font-size: 0.85em; color: #ff6f00; margin-top: 4px;"></div>
+    </div>
     <div class="title-buttons">
       <button class="btn btn-primary" onclick="startGame()">スタート</button>
       <button class="btn btn-secondary" onclick="openSettings()">設定</button>
     </div>
+    <div id="bookmarkSection" style="text-align: center; margin-top: 20px; padding: 14px; background: #fff8e1; border-radius: 8px; display: none;">
+      <button class="btn btn-secondary" style="width: 100%;" onclick="openBookmarks()">🔖 ブックマーク一覧 <span id="bookmarkCount" class="bookmark-badge">0</span></button>
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="startReviewMode()">📚 振り返りモードで復習</button>
+    </div>
     <p style="text-align: center; color: #999; font-size: 0.9em; margin-top: 20px;">
-      GitHub RawのJSONデータでクイズを実行<br>
-      制限時間・合格ラインを自由に設定できます
+      ワクワクのクイズゲーム 🎮✨
     </p>
   </div>
 
   <!-- Play Screen -->
   <div id="playScreen" class="screen">
-    <div class="hud">
-      <div>Q <span id="qNumber">1</span>/<span id="qTotal">20</span></div>
-      <div>スコア: <span id="score">0</span></div>
-      <div id="missLeft" style="display: none;">ミス: <span id="missLeftNum">5</span></div>
+    <div class="progress-bar">
+      <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
     </div>
+
+    <div style="margin-bottom: 12px;">
+      <span id="modeIndicator" style="display: none;" class="mode-indicator">📚 振り返りモード</span>
+    </div>
+
+    <div class="hud">
+      <div class="hud-item">Q <span id="qNumber">1</span>/<span id="qTotal">20</span></div>
+      <div class="hud-item">スコア: <span id="score">0</span></div>
+      <div class="hud-item" id="missLeft" style="display: none;">ミス: <span id="missLeftNum">5</span></div>
+    </div>
+
+    <div class="streak-display" id="streakDisplay"></div>
 
     <div class="timer-container">
       <div class="timer-bar"><div id="timerFill" class="timer-fill"></div></div>
@@ -225,10 +381,13 @@
 
   <!-- End Screen -->
   <div id="endScreen" class="screen">
-    <h1>ゲーム終了</h1>
+    <h1>🎉 ゲーム終了</h1>
     <div class="result-panel">
       <div class="result-score" id="finalScore">0/20</div>
+      <div class="result-stars" id="resultStars">★☆☆☆☆</div>
       <div id="resultMessage" class="result-message"></div>
+      <div id="resultComment" class="result-comment"></div>
+      <div id="resultComparison" class="result-comparison" style="display: none;"></div>
     </div>
     <div style="display: flex; gap: 12px;">
       <button class="btn btn-primary" onclick="resetGame()">再挑戦</button>
@@ -241,7 +400,7 @@
 <div id="settingsModal" class="modal">
   <div class="modal-content">
     <h2>⚙️ ゲーム設定</h2>
-    
+
     <div class="settings-group">
       <label for="dataUrl">データURL (GitHub Raw)</label>
       <input type="text" id="dataUrl" placeholder="https://raw.githubusercontent.com/...">
@@ -291,6 +450,13 @@
       </label>
     </div>
 
+    <div class="settings-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableSound" checked>
+        <span>効果音・BGMを有効</span>
+      </label>
+    </div>
+
     <div style="display: flex; gap: 12px; margin-top: 24px;">
       <button class="btn btn-primary" style="flex: 2;" onclick="saveSettings()">保存</button>
       <button class="btn btn-secondary" onclick="resetSettings()">デフォルト</button>
@@ -299,37 +465,158 @@
   </div>
 </div>
 
+<!-- Bookmarks Modal -->
+<div id="bookmarksModal" class="modal">
+  <div class="modal-content">
+    <h2>🔖 ブックマーク一覧</h2>
+    <p style="color: #666; font-size: 0.95em; margin-bottom: 16px;">間違えた問題を復習できます。</p>
+    <div id="bookmarkListContainer" class="bookmark-list"></div>
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button class="btn btn-primary" style="flex: 2;" onclick="startReviewMode()">📚 復習を開始</button>
+      <button class="btn btn-danger" onclick="clearAllBookmarks()">すべてクリア</button>
+      <button class="btn btn-secondary" onclick="closeBookmarks()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const DEFAULT_SETTINGS = {
   dataUrl: './quiz_list.json',
-  totalQuestions: 5,
+  totalQuestions: 20,
   timePerQuestionSec: 120,
   unlimited: false,
   usePass: true,
-  passingScore: 3,
+  passingScore: 15,
   shuffleQ: true,
-  shuffleC: true
+  shuffleC: true,
+  enableSound: true
 };
 
 let settings = {...DEFAULT_SETTINGS};
 let selectedQuestions = [];
 let currentIndex = 0;
 let score = 0;
+let streak = 0;
 let missesLeft = 0;
 let timerInterval = null;
 let timerStart = 0;
 let isAnswered = false;
 let gameOver = false;
+let gameHistory = [];
+let bookmarked = [];
+let isReviewMode = false;
+let allQuestionsData = [];
+
+// Sound helper
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(freq, duration, type = 'sine') {
+  if (!settings.enableSound) return;
+  try {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = freq;
+    osc.type = type;
+    gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    osc.start(audioContext.currentTime);
+    osc.stop(audioContext.currentTime + duration);
+  } catch(e) {}
+}
+
+function playSoundCorrect() { playSound(800, 0.15); playSound(1200, 0.15); }
+function playSoundIncorrect() { playSound(400, 0.15); playSound(300, 0.15); }
+function playSoundSuccess() { playSound(600, 0.1); playSound(900, 0.1); playSound(1200, 0.1); }
+
+function createParticles(x, y, emoji, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle particle-emoji';
+    p.textContent = emoji;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.transform = `translateX(${(Math.random() - 0.5) * 100}px)`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1500);
+  }
+}
+
+function floatingScore(x, y, points, isCorrect) {
+  const div = document.createElement('div');
+  div.style.cssText = `
+    position: fixed;
+    left: ${x}px;
+    top: ${y}px;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: ${isCorrect ? '#4CAF50' : '#f44336'};
+    pointer-events: none;
+    animation: floatingScore 1.2s ease-out forwards;
+  `;
+  div.textContent = isCorrect ? `+${points}` : `-${points}`;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 1200);
+}
 
 window.addEventListener('load', () => {
   loadSettings();
+  loadHistory();
+  loadBookmarks();
   updateDataStatus();
+  showPreviousScore();
+  updateBookmarkSection();
 });
 
 function loadSettings() {
   const saved = localStorage.getItem('quizSettings');
   if (saved) try { settings = {...DEFAULT_SETTINGS, ...JSON.parse(saved)}; } catch(e) {}
   applySettingsToUI();
+}
+
+function loadHistory() {
+  const hist = localStorage.getItem('quizHistory');
+  if (hist) try { gameHistory = JSON.parse(hist); } catch(e) {}
+}
+
+function loadBookmarks() {
+  const bm = localStorage.getItem('quizBookmarks');
+  if (bm) try { bookmarked = JSON.parse(bm); } catch(e) {}
+}
+
+function saveBookmarks() {
+  localStorage.setItem('quizBookmarks', JSON.stringify(bookmarked));
+  updateBookmarkSection();
+}
+
+function updateBookmarkSection() {
+  const section = document.getElementById('bookmarkSection');
+  const count = document.getElementById('bookmarkCount');
+  if (bookmarked.length > 0) {
+    section.style.display = 'block';
+    count.textContent = bookmarked.length;
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+function saveHistory() {
+  gameHistory.push({score, total: selectedQuestions.length, date: new Date().toLocaleString()});
+  gameHistory = gameHistory.slice(-10); // Keep last 10
+  localStorage.setItem('quizHistory', JSON.stringify(gameHistory));
+}
+
+function showPreviousScore() {
+  if (gameHistory.length === 0) return;
+  const last = gameHistory[gameHistory.length - 1];
+  const prevScore = last.score;
+  document.getElementById('prevScoreText').textContent = `${prevScore}/${last.total}`;
+
+  document.getElementById('previousScore').style.display = 'block';
+  const compEl = document.getElementById('prevComparison');
+  compEl.textContent = '（前回と同じ結果）';
+  compEl.style.color = '#ff6f00';
 }
 
 function applySettingsToUI() {
@@ -341,6 +628,7 @@ function applySettingsToUI() {
   document.getElementById('passingScore').value = settings.passingScore;
   document.getElementById('shuffleQ').checked = settings.shuffleQ;
   document.getElementById('shuffleC').checked = settings.shuffleC;
+  document.getElementById('enableSound').checked = settings.enableSound;
 }
 
 function saveSettings() {
@@ -352,14 +640,15 @@ function saveSettings() {
     usePass: document.getElementById('usePass').checked,
     passingScore: Math.max(0, parseInt(document.getElementById('passingScore').value) || 15),
     shuffleQ: document.getElementById('shuffleQ').checked,
-    shuffleC: document.getElementById('shuffleC').checked
+    shuffleC: document.getElementById('shuffleC').checked,
+    enableSound: document.getElementById('enableSound').checked
   };
-  
+
   if (settings.passingScore > settings.totalQuestions) {
     alert('合格必要点は出題数以下にしてください');
     return;
   }
-  
+
   localStorage.setItem('quizSettings', JSON.stringify(settings));
   closeSettings();
   updateDataStatus();
@@ -393,9 +682,9 @@ async function loadQuestions(url) {
     const res = await fetch(url, {cache: 'no-cache'});
     if (!res.ok) throw new Error('ネットワークエラー');
     const data = await res.json();
-    
+
     if (!Array.isArray(data) || data.length === 0) throw new Error('データが空です');
-    
+
     for (let q of data) {
       if (!q.id || !q.question || !Array.isArray(q.choices) || !q.correct)
         throw new Error('データ形式が不正です');
@@ -416,33 +705,54 @@ function shuffle(arr) {
   return res;
 }
 
-async function startGame() {
+async function startGame(reviewMode = false) {
   if (!settings.dataUrl) { alert('データURLを設定してください'); openSettings(); return; }
-  
+
   const allQ = await loadQuestions(settings.dataUrl);
   if (!allQ) return;
-  
-  if (settings.totalQuestions > allQ.length) {
-    alert(`出題数をデータ件数(${allQ.length})以下にしてください`);
-    return;
+
+  allQuestionsData = allQ;
+  isReviewMode = reviewMode;
+
+  if (reviewMode) {
+    // Review mode: use bookmarked questions
+    if (bookmarked.length === 0) { alert('ブックマークされた問題がありません'); return; }
+    selectedQuestions = [];
+    for (let id of bookmarked) {
+      const q = allQ.find(x => x.id === id);
+      if (q) {
+        let qq = {...q};
+        if (settings.shuffleC) qq.choices = shuffle(qq.choices);
+        selectedQuestions.push(qq);
+      }
+    }
+  } else {
+    // Normal mode: use totalQuestions
+    if (settings.totalQuestions > allQ.length) {
+      alert(`出題数をデータ件数(${allQ.length})以下にしてください`);
+      return;
+    }
+
+    let indices = Array.from({length: allQ.length}, (_, i) => i);
+    if (settings.shuffleQ) indices = shuffle(indices);
+
+    selectedQuestions = [];
+    for (let i = 0; i < settings.totalQuestions; i++) {
+      let q = {...allQ[indices[i]]};
+      if (settings.shuffleC) q.choices = shuffle(q.choices);
+      selectedQuestions.push(q);
+    }
   }
-  
-  let indices = Array.from({length: allQ.length}, (_, i) => i);
-  if (settings.shuffleQ) indices = shuffle(indices);
-  
-  selectedQuestions = [];
-  for (let i = 0; i < settings.totalQuestions; i++) {
-    let q = {...allQ[indices[i]]};
-    if (settings.shuffleC) q.choices = shuffle(q.choices);
-    selectedQuestions.push(q);
-  }
-  
+
   currentIndex = 0;
   score = 0;
+  streak = 0;
   missesLeft = settings.totalQuestions - settings.passingScore;
   isAnswered = false;
   gameOver = false;
-  
+
+  playSoundSuccess();
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('playScreen').classList.add('active');
   renderQuestion();
@@ -450,35 +760,55 @@ async function startGame() {
 
 function renderQuestion() {
   if (currentIndex >= selectedQuestions.length) { finishGame(); return; }
-  
+
   const q = selectedQuestions[currentIndex];
   document.getElementById('qNumber').textContent = currentIndex + 1;
   document.getElementById('qTotal').textContent = selectedQuestions.length;
   document.getElementById('score').textContent = score;
-  
+
+  // Show review mode indicator
+  const modeInd = document.getElementById('modeIndicator');
+  if (isReviewMode) {
+    modeInd.style.display = 'inline-block';
+  } else {
+    modeInd.style.display = 'none';
+  }
+
+  const progress = ((currentIndex) / selectedQuestions.length) * 100;
+  document.getElementById('progressFill').style.width = progress + '%';
+
+  // Streak display
+  const streakEl = document.getElementById('streakDisplay');
+  if (streak > 0) {
+    streakEl.innerHTML = `🔥 ${streak} 連続正解！`;
+    streakEl.className = 'streak-correct';
+  } else {
+    streakEl.textContent = '';
+  }
+
   if (settings.usePass) {
     document.getElementById('missLeft').style.display = 'block';
     document.getElementById('missLeftNum').textContent = Math.max(0, missesLeft);
   } else {
     document.getElementById('missLeft').style.display = 'none';
   }
-  
+
   document.getElementById('questionText').textContent = q.question;
-  
+
   const cont = document.getElementById('choicesContainer');
   cont.innerHTML = '';
   q.choices.forEach(c => {
     const btn = document.createElement('button');
     btn.className = 'choice';
     btn.textContent = c.k + ': ' + c.t;
-    btn.onclick = () => handleAnswer(c.k);
+    btn.onclick = () => handleAnswer(c.k, btn);
     btn.id = 'choice_' + c.k;
     cont.appendChild(btn);
   });
-  
+
   document.getElementById('questionPanel').style.display = 'block';
   document.getElementById('judgePanel').style.display = 'none';
-  
+
   isAnswered = false;
   startTimer();
 }
@@ -487,15 +817,15 @@ function startTimer() {
   clearInterval(timerInterval);
   timerStart = Date.now();
   const duration = settings.unlimited ? Infinity : settings.timePerQuestionSec * 1000;
-  
+
   const update = () => {
     const elapsed = Date.now() - timerStart;
     const remain = Math.max(0, duration - elapsed);
     const pct = (remain / duration) * 100;
-    
+
     const fill = document.getElementById('timerFill');
     const text = document.getElementById('timerText');
-    
+
     if (settings.unlimited) {
       text.textContent = '∞';
       fill.style.width = '100%';
@@ -504,42 +834,80 @@ function startTimer() {
       text.textContent = Math.ceil(remain / 1000);
       fill.style.width = pct + '%';
       fill.className = pct < 10 ? 'timer-fill critical' : pct < 25 ? 'timer-fill warning' : 'timer-fill';
-      
+
       if (remain <= 0) {
         clearInterval(timerInterval);
-        if (!isAnswered) handleAnswer(null);
+        if (!isAnswered) handleAnswer(null, null);
       }
     }
   };
-  
+
   update();
   timerInterval = setInterval(update, 100);
 }
 
-function handleAnswer(picked) {
+function handleAnswer(picked, btn) {
   if (isAnswered || gameOver) return;
   isAnswered = true;
   clearInterval(timerInterval);
-  
+
   const q = selectedQuestions[currentIndex];
   const correct = picked === q.correct;
-  
-  if (correct) score++;
-  else missesLeft--;
-  
+
+  if (correct) {
+    score++;
+    streak++;
+    playSoundCorrect();
+    if (btn) createParticles(btn.getBoundingClientRect().left + 50, btn.getBoundingClientRect().top + 25, '✨', 12);
+  } else {
+    streak = 0;
+    missesLeft--;
+    playSoundIncorrect();
+
+    // Auto-bookmark incorrect answer
+    if (!bookmarked.includes(q.id)) {
+      bookmarked.push(q.id);
+      saveBookmarks();
+    }
+
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      const div = document.createElement('div');
+      div.style.cssText = `
+        position: fixed;
+        left: ${rect.left}px;
+        top: ${rect.top}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
+        animation: fallDown 0.8s ease-in forwards;
+        pointer-events: none;
+      `;
+      div.textContent = '❌';
+      div.style.fontSize = '2em';
+      div.style.display = 'flex';
+      div.style.alignItems = 'center';
+      div.style.justifyContent = 'center';
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 800);
+    }
+  }
+
+  const scoreFloat = correct ? 1 : 1;
+  floatingScore(window.innerWidth / 2, window.innerHeight / 2, scoreFloat, correct);
+
   document.querySelectorAll('.choice').forEach(b => b.disabled = true);
   if (picked) document.getElementById('choice_' + picked).classList.add(correct ? 'correct' : 'incorrect');
   document.getElementById('choice_' + q.correct).classList.add('correct');
-  
+
   const exp = q.explanation || '解説なし';
   const result = document.getElementById('judgeResult');
   result.textContent = correct ? '✔️' : '❌';
   result.className = 'judge-result ' + (correct ? 'correct' : 'incorrect');
-  
+
   document.getElementById('explanationText').textContent = exp;
   document.getElementById('questionPanel').style.display = 'none';
   document.getElementById('judgePanel').style.display = 'block';
-  
+
   if (settings.usePass && missesLeft < 0) gameOver = true;
 }
 
@@ -550,28 +918,119 @@ function nextQuestion() {
   else renderQuestion();
 }
 
+function getStarRating(score, total) {
+  const percent = (score / total) * 100;
+  if (percent === 100) return '⭐⭐⭐⭐⭐';
+  if (percent >= 90) return '⭐⭐⭐⭐☆';
+  if (percent >= 75) return '⭐⭐⭐☆☆';
+  if (percent >= 60) return '⭐⭐☆☆☆';
+  if (percent >= 40) return '⭐☆☆☆☆';
+  return '☆☆☆☆☆';
+}
+
+function getResultMessage(score, total, gameOver) {
+  if (gameOver) return '❌ ゲームオーバー（許容ミス超過）';
+  const percent = (score / total) * 100;
+  if (percent === 100) return '🏆 完璧！全問正解！';
+  if (percent >= 90) return '🌟 素晴らしい！';
+  if (percent >= 75) return '✨ よくできました！';
+  if (percent >= 60) return '👍 及第点です';
+  return '💪 もう一度チャレンジ！';
+}
+
 function finishGame() {
   clearInterval(timerInterval);
   const total = selectedQuestions.length;
   const passed = score >= settings.passingScore;
-  
+
   document.getElementById('finalScore').textContent = `${score}/${total}`;
-  
+  document.getElementById('resultStars').textContent = getStarRating(score, total);
+
   let msg = '';
   if (gameOver) msg = '❌ ゲームオーバー（許容ミス超過）';
   else if (settings.usePass) msg = passed ? '✔️ 合格！' : '❌ 不合格';
-  else msg = '✔️ クイズ完了';
-  
+  else msg = getResultMessage(score, total, false);
+
   document.getElementById('resultMessage').textContent = msg;
-  
+
+  const comment = getResultMessage(score, total, gameOver);
+  document.getElementById('resultComment').textContent = comment;
+
+  // Comparison with previous
+  if (gameHistory.length > 0) {
+    const last = gameHistory[gameHistory.length - 1];
+    const lastScore = last.score;
+    const comp = document.getElementById('resultComparison');
+    if (score > lastScore) {
+      comp.textContent = `🎉 前回より ${score - lastScore} 点アップ！`;
+    } else if (score < lastScore) {
+      comp.textContent = `前回より ${lastScore - score} 点ダウン`;
+    } else {
+      comp.textContent = '前回と同じスコア';
+    }
+    comp.style.display = 'block';
+  }
+
+  saveHistory();
+
+  playSoundSuccess();
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('endScreen').classList.add('active');
 }
 
-function resetGame() { startGame(); }
+function resetGame() { startGame(isReviewMode); }
 function goToTitle() {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('titleScreen').classList.add('active');
+  showPreviousScore();
+}
+
+function openBookmarks() {
+  const cont = document.getElementById('bookmarkListContainer');
+  if (bookmarked.length === 0) {
+    cont.innerHTML = '<p style="color: #999;">ブックマークされた問題がありません</p>';
+    document.getElementById('bookmarksModal').classList.add('active');
+    return;
+  }
+
+  const bmList = bookmarked.map(id => {
+    const q = allQuestionsData.find(x => x.id === id);
+    if (!q) return '';
+    const idx = bookmarked.indexOf(id);
+    return `
+      <div class="bookmark-item">
+        <div class="bookmark-item-q">問${idx + 1}. ${q.question.substring(0, 80)}...</div>
+        <button class="bookmark-item-btn" onclick="removeBookmark('${id}')">削除</button>
+      </div>
+    `;
+  }).join('');
+
+  cont.innerHTML = bmList;
+  document.getElementById('bookmarksModal').classList.add('active');
+}
+
+function closeBookmarks() {
+  document.getElementById('bookmarksModal').classList.remove('active');
+}
+
+function removeBookmark(id) {
+  bookmarked = bookmarked.filter(x => x !== id);
+  saveBookmarks();
+  openBookmarks(); // Refresh
+}
+
+function clearAllBookmarks() {
+  if (confirm('ブックマークをすべて削除しますか？')) {
+    bookmarked = [];
+    saveBookmarks();
+    closeBookmarks();
+  }
+}
+
+function startReviewMode() {
+  closeBookmarks();
+  startGame(true);
 }
 </script>
 
