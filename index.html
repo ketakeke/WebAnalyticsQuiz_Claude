@@ -336,8 +336,8 @@
       <button class="btn btn-secondary" onclick="openSettings()">設定</button>
     </div>
     <div id="bookmarkSection" style="text-align: center; margin-top: 20px; padding: 14px; background: #fff8e1; border-radius: 8px; display: none;">
-      <button class="btn btn-secondary" style="width: 100%;" onclick="openBookmarks()">🔖 ブックマーク一覧 <span id="bookmarkCount" class="bookmark-badge">0</span></button>
-      <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="startReviewMode()">📚 振り返りモードで復習</button>
+      <button class="btn btn-secondary" style="width: 100%;" onclick="openBookmarks()">❌ 間違えた問題 <span id="bookmarkCount" class="bookmark-badge">0</span></button>
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="startReviewMode()">📚 間違えた問題で復習</button>
     </div>
     <p style="text-align: center; color: #999; font-size: 0.9em; margin-top: 20px;">
       ワクワクのクイズゲーム 🎮✨
@@ -346,6 +346,10 @@
 
   <!-- Play Screen -->
   <div id="playScreen" class="screen">
+    <div style="text-align: right; margin-bottom: 12px;">
+      <button style="padding: 6px 12px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85em;" onclick="confirmQuit()">✕ 終了</button>
+    </div>
+
     <div class="progress-bar">
       <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
     </div>
@@ -357,7 +361,7 @@
     <div class="hud">
       <div class="hud-item">Q <span id="qNumber">1</span>/<span id="qTotal">20</span></div>
       <div class="hud-item">スコア: <span id="score">0</span></div>
-      <div class="hud-item" id="missLeft" style="display: none;">ミス: <span id="missLeftNum">5</span></div>
+      <div class="hud-item" id="missLeft" style="display: none;">ライフ: <span id="missLeftNum">5</span></div>
     </div>
 
     <div class="streak-display" id="streakDisplay"></div>
@@ -468,13 +472,24 @@
 <!-- Bookmarks Modal -->
 <div id="bookmarksModal" class="modal">
   <div class="modal-content">
-    <h2>🔖 ブックマーク一覧</h2>
-    <p style="color: #666; font-size: 0.95em; margin-bottom: 16px;">間違えた問題を復習できます。</p>
+    <h2>❌ 間違えた問題</h2>
+    <p style="color: #666; font-size: 0.95em; margin-bottom: 16px;">不正解だった問題を復習できます。</p>
     <div id="bookmarkListContainer" class="bookmark-list"></div>
     <div style="display: flex; gap: 12px; margin-top: 20px;">
       <button class="btn btn-primary" style="flex: 2;" onclick="startReviewMode()">📚 復習を開始</button>
       <button class="btn btn-danger" onclick="clearAllBookmarks()">すべてクリア</button>
       <button class="btn btn-secondary" onclick="closeBookmarks()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bookmark Detail Modal -->
+<div id="bookmarkDetailModal" class="modal">
+  <div class="modal-content" style="max-width: 600px;">
+    <h2 id="detailTitle">問題確認</h2>
+    <div id="detailContent" style="max-height: 60vh; overflow-y: auto;"></div>
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button class="btn btn-primary" style="flex: 1;" onclick="closeBookmarkDetail()">閉じる</button>
     </div>
   </div>
 </div>
@@ -991,11 +1006,29 @@ function goToTitle() {
 function openBookmarks() {
   const cont = document.getElementById('bookmarkListContainer');
   if (bookmarked.length === 0) {
-    cont.innerHTML = '<p style="color: #999;">ブックマークされた問題がありません</p>';
+    cont.innerHTML = '<p style="color: #999;">保存された問題がありません</p>';
     document.getElementById('bookmarksModal').classList.add('active');
     return;
   }
 
+  // allQuestionsDataが空の場合、再度読み込む
+  if (allQuestionsData.length === 0) {
+    loadQuestions(settings.dataUrl).then(loaded => {
+      if (!loaded) {
+        cont.innerHTML = '<p style="color: #c62828;">問題データの読み込みに失敗しました</p>';
+        return;
+      }
+      allQuestionsData = loaded;
+      displayBookmarks();
+    });
+    return;
+  }
+
+  displayBookmarks();
+}
+
+function displayBookmarks() {
+  const cont = document.getElementById('bookmarkListContainer');
   const bmList = bookmarked.map(id => {
     const q = allQuestionsData.find(x => x.id === id);
     if (!q) return '';
@@ -1003,6 +1036,7 @@ function openBookmarks() {
     return `
       <div class="bookmark-item">
         <div class="bookmark-item-q">問${idx + 1}. ${q.question.substring(0, 80)}...</div>
+        <button class="bookmark-item-btn" style="background: #2196F3; margin-right: 8px;" onclick="showBookmarkDetail('${id}')">確認</button>
         <button class="bookmark-item-btn" onclick="removeBookmark('${id}')">削除</button>
       </div>
     `;
@@ -1033,6 +1067,80 @@ function clearAllBookmarks() {
 function startReviewMode() {
   closeBookmarks();
   startGame(true);
+}
+
+function showBookmarkDetail(id) {
+  const q = allQuestionsData.find(x => x.id === id);
+  if (!q) return;
+
+  const choicesHtml = q.choices.map(c => `
+    <button onclick="selectChoiceInDetail('${id}', '${c.k}')" style="display: block; width: 100%; padding: 12px; background: white; border: 2px solid #ddd; border-radius: 4px; margin-bottom: 8px; text-align: left; cursor: pointer; font-size: 1em; transition: all 0.2s;">
+      <strong>${c.k}. ${c.t}</strong>
+      <span id="feedback_${id}_${c.k}" style="margin-left: 8px; font-weight: bold;"></span>
+    </button>
+  `).join('');
+
+  const html = `
+    <div style="margin-bottom: 16px;">
+      <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px; line-height: 1.8;">
+        <strong>【問題】</strong><br>${q.question}
+      </div>
+      <div style="margin-bottom: 16px;">
+        <strong>【選択肢】</strong><br>${choicesHtml}
+      </div>
+      <div style="background: #fff8e1; padding: 12px; border-radius: 8px; border-left: 4px solid #ff6f00;">
+        <strong>【解説】</strong><br>${q.explanation || '解説なし'}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('bookmarkDetailModal').classList.add('active');
+}
+
+function selectChoiceInDetail(id, selectedKey) {
+  const q = allQuestionsData.find(x => x.id === id);
+  if (!q) return;
+
+  const correct = selectedKey === q.correct;
+  
+  // すべての選択肢をリセット
+  q.choices.forEach(c => {
+    const btn = document.querySelector(`button[onclick="selectChoiceInDetail('${id}', '${c.k}')"]`);
+    const feedback = document.getElementById(`feedback_${id}_${c.k}`);
+    if (btn) {
+      btn.style.borderColor = '#ddd';
+      btn.style.background = 'white';
+    }
+    if (feedback) feedback.textContent = '';
+  });
+
+  // クリックした選択肢をハイライト
+  const selectedBtn = document.querySelector(`button[onclick="selectChoiceInDetail('${id}', '${selectedKey}')"]`);
+  const selectedFeedback = document.getElementById(`feedback_${id}_${selectedKey}`);
+  
+  if (selectedBtn) {
+    if (correct) {
+      selectedBtn.style.borderColor = '#4CAF50';
+      selectedBtn.style.background = '#e8f5e9';
+      if (selectedFeedback) selectedFeedback.textContent = '✓ 正解！';
+    } else {
+      selectedBtn.style.borderColor = '#f44336';
+      selectedBtn.style.background = '#ffebee';
+      if (selectedFeedback) selectedFeedback.textContent = '✗ 不正解';
+    }
+  }
+}
+
+function closeBookmarkDetail() {
+  document.getElementById('bookmarkDetailModal').classList.remove('active');
+}
+
+function confirmQuit() {
+  if (confirm('クイズを終了しますか？')) {
+    clearInterval(timerInterval);
+    goToTitle();
+  }
 }
 </script>
 
